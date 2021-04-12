@@ -1846,13 +1846,31 @@ static int git_config_from_blob_ref(config_fn_t fn,
 
 char *git_system_config(void)
 {
+	char *system_config = xstrdup_or_null(getenv("GIT_CONFIG_SYSTEM"));
+	if (system_config) {
+		if (!strcmp(system_config, "/dev/null"))
+			FREE_AND_NULL(system_config);
+		return system_config;
+	}
 	return system_path(ETC_GITCONFIG);
 }
 
-void git_global_config(char **user_config, char **xdg_config)
+void git_global_config(char **user_out, char **xdg_out)
 {
-	*user_config = expand_user_path("~/.gitconfig", 0);
-	*xdg_config = xdg_config_home("config");
+	char *user_config = xstrdup_or_null(getenv("GIT_CONFIG_GLOBAL"));
+	char *xdg_config = NULL;
+
+	if (user_config) {
+		if (!strcmp(user_config, "/dev/null"))
+			FREE_AND_NULL(user_config);
+		xdg_config = NULL;
+	} else {
+		user_config = expand_user_path("~/.gitconfig", 0);
+		xdg_config = xdg_config_home("config");
+	}
+
+	*user_out = user_config;
+	*xdg_out = xdg_config;
 }
 
 /*

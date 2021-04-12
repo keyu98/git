@@ -674,7 +674,10 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		char *user_config, *xdg_config;
 
 		git_global_config(&user_config, &xdg_config);
-		if (!user_config)
+		if (!user_config) {
+			if (getenv("GIT_CONFIG_GLOBAL"))
+				die(_("GIT_CONFIG_GLOBAL=/dev/null set"));
+
 			/*
 			 * It is unknown if HOME/.gitconfig exists, so
 			 * we do not know if we should write to XDG
@@ -682,6 +685,7 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			 * is set and points at a sane location.
 			 */
 			die(_("$HOME not set"));
+		}
 
 		given_config_source.scope = CONFIG_SCOPE_GLOBAL;
 
