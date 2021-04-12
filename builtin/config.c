@@ -671,10 +671,13 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 	}
 
 	if (use_global_config) {
-		char *user_config = expand_user_path("~/.gitconfig", 0);
-		char *xdg_config = xdg_config_home("config");
+		char *user_config, *xdg_config;
 
-		if (!user_config)
+		git_global_config(&user_config, &xdg_config);
+		if (!user_config) {
+			if (getenv("GIT_CONFIG_GLOBAL"))
+				die(_("GIT_CONFIG_GLOBAL=/dev/null set"));
+
 			/*
 			 * It is unknown if HOME/.gitconfig exists, so
 			 * we do not know if we should write to XDG
@@ -682,6 +685,7 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			 * is set and points at a sane location.
 			 */
 			die(_("$HOME not set"));
+		}
 
 		given_config_source.scope = CONFIG_SCOPE_GLOBAL;
 
@@ -695,7 +699,7 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		}
 	}
 	else if (use_system_config) {
-		given_config_source.file = git_etc_gitconfig();
+		given_config_source.file = git_system_config();
 		given_config_source.scope = CONFIG_SCOPE_SYSTEM;
 	} else if (use_local_config) {
 		given_config_source.file = git_pathdup("config");
