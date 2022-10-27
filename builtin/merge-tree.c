@@ -3,6 +3,7 @@
 #include "tree-walk.h"
 #include "xdiff-interface.h"
 #include "help.h"
+#include "commit.h"
 #include "commit-reach.h"
 #include "merge-ort.h"
 #include "object-store.h"
@@ -405,6 +406,7 @@ struct merge_tree_options {
 };
 
 static int real_merge(struct merge_tree_options *o,
+		      const char *base_commit,
 		      const char *branch1, const char *branch2,
 		      const char *prefix)
 {
@@ -430,11 +432,18 @@ static int real_merge(struct merge_tree_options *o,
 	opt.branch1 = branch1;
 	opt.branch2 = branch2;
 
-	/*
-	 * Get the merge bases, in reverse order; see comment above
-	 * merge_incore_recursive in merge-ort.h
-	 */
-	merge_bases = get_merge_bases(parent1, parent2);
+	if (base_commit) {
+		struct commit *c = lookup_commit_reference_by_name(base_commit);
+		if (!c)
+			die(_("could not lookup commit %s"), base_commit);
+		commit_list_insert(c, &merge_bases);
+	} else {
+		/*
+		 * Get the merge bases, in reverse order; see comment above
+		 * merge_incore_recursive in merge-ort.h
+		 */
+		merge_bases = get_merge_bases(parent1, parent2);
+	}
 	if (!merge_bases && !o->allow_unrelated_histories)
 		die(_("refusing to merge unrelated histories"));
 	merge_bases = reverse_commit_list(merge_bases);
@@ -479,11 +488,10 @@ static int real_merge(struct merge_tree_options *o,
 int cmd_merge_tree(int argc, const char **argv, const char *prefix)
 {
 	struct merge_tree_options o = { .show_messages = -1 };
-	int expected_remaining_argc;
 	int original_argc;
 
 	const char * const merge_tree_usage[] = {
-		N_("git merge-tree [--write-tree] [<options>] <branch1> <branch2>"),
+		N_("git merge-tree [--write-tree] [<options>] [<base-commit>] <branch1> <branch2>"),
 		N_("git merge-tree [--trivial-merge] <base-tree> <branch1> <branch2>"),
 		NULL
 	};
@@ -526,13 +534,16 @@ int cmd_merge_tree(int argc, const char **argv, const char *prefix)
 			o.mode = MODE_TRIVIAL;
 			break;
 		}
-		expected_remaining_argc = argc;
 		break;
 	case MODE_REAL:
-		expected_remaining_argc = 2;
+		if (argc != 2 && argc != 3) {
+			usage_with_options(merge_tree_usage, mt_options);
+		}
 		break;
 	case MODE_TRIVIAL:
-		expected_remaining_argc = 3;
+		if (argc != 3) {
+			usage_with_options(merge_tree_usage, mt_options);
+		}
 		/* Removal of `--trivial-merge` is expected */
 		original_argc--;
 		break;
@@ -540,12 +551,13 @@ int cmd_merge_tree(int argc, const char **argv, const char *prefix)
 	if (o.mode == MODE_TRIVIAL && argc < original_argc)
 		die(_("--trivial-merge is incompatible with all other options"));
 
-	if (argc != expected_remaining_argc)
-		usage_with_options(merge_tree_usage, mt_options);
-
 	/* Do the relevant type of merge */
 	if (o.mode == MODE_REAL)
-		return real_merge(&o, argv[0], argv[1], prefix);
+		if (argc == 2) {
+			return real_merge(&o, NULL, argv[0], argv[1], prefix);
+		} else {
+			return real_merge(&o, argv[0], argv[1], argv[2], prefix);
+		}
 	else
 		return trivial_merge(argv[0], argv[1], argv[2]);
 }

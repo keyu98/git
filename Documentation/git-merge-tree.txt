@@ -9,7 +9,7 @@ git-merge-tree - Perform merge without touching index or working tree
 SYNOPSIS
 --------
 [verse]
-'git merge-tree' [--write-tree] [<options>] <branch1> <branch2>
+'git merge-tree' [--write-tree] [<options>] [<base-commit>] <branch1> <branch2>
 'git merge-tree' [--trivial-merge] <base-tree> <branch1> <branch2> (deprecated)
 
 [[NEWMERGE]]
@@ -155,6 +155,11 @@ with linkgit:git-merge[1]:
     <<CFI,Conflicted file info>>)
   * any messages that would have been printed to stdout (the
     <<IM,Informational messages>>)
+
+When --write-tree is passed, it also allows specifying a base commit
+instead of computing it from the two branches you give, such as:
+
+       git merge-tree --write-tree $BASE_COMMIT $BRANCH1 $BRANCH2
 
 MISTAKES TO AVOID
 -----------------
